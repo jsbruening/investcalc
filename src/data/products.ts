@@ -386,5 +386,52 @@ export const products: Product[] = [
       termMonths: 60,
       rate: 0.05
     }
+  },
+  {
+    _id: "life-insurance-1",
+    type: "lifeInsurance",
+    termType: "lifetime",
+    calculatorType: "calculateLifeInsuranceReturn",
+    schema: [
+      { name: "carrier", label: "Insurance Carrier", type: "text", required: true, order: 1 },
+      { name: "productName", label: "Product Name", type: "text", required: true, order: 2 },
+      { name: "rate", label: "Base Rate", type: "number", required: true, order: 3 },
+      { name: "deathBenefit", label: "Death Benefit", type: "number", required: true, order: 4 },
+      { name: "cashValue", label: "Cash Value", type: "number", required: true, order: 5 },
+      {
+        name: "rateGrid",
+        label: "Rate Grid",
+        type: "grid",
+        required: true,
+        order: 6,
+        fields: [
+          { name: "age", label: "Age", type: "number" },
+          { name: "gender", label: "Gender", type: "select", options: ["Male", "Female"] },
+          { name: "tobaccoUse", label: "Tobacco Use", type: "select", options: ["Yes", "No"] },
+          { name: "rate", label: "Rate", type: "number" }
+        ]
+      }
+    ],
+    data: {
+      carrier: "SecureLife",
+      productName: "Whole Life Insurance",
+      rate: 0.04,
+      deathBenefit: 1000000,
+      cashValue: 500000,
+      rateGrid: [
+        { age: 30, gender: "Male", tobaccoUse: "No", rate: 0.04 },
+        { age: 30, gender: "Male", tobaccoUse: "Yes", rate: 0.06 },
+        { age: 30, gender: "Female", tobaccoUse: "No", rate: 0.035 },
+        { age: 30, gender: "Female", tobaccoUse: "Yes", rate: 0.055 },
+        { age: 40, gender: "Male", tobaccoUse: "No", rate: 0.045 },
+        { age: 40, gender: "Male", tobaccoUse: "Yes", rate: 0.065 },
+        { age: 40, gender: "Female", tobaccoUse: "No", rate: 0.04 },
+        { age: 40, gender: "Female", tobaccoUse: "Yes", rate: 0.06 },
+        { age: 50, gender: "Male", tobaccoUse: "No", rate: 0.05 },
+        { age: 50, gender: "Male", tobaccoUse: "Yes", rate: 0.07 },
+        { age: 50, gender: "Female", tobaccoUse: "No", rate: 0.045 },
+        { age: 50, gender: "Female", tobaccoUse: "Yes", rate: 0.065 }
+      ]
+    }
   }
 ]; 

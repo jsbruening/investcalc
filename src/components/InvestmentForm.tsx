@@ -262,38 +262,6 @@ const InvestmentForm: React.FC<InvestmentFormProps> = ({ onSubmit }) => {
       </div>
       <div className="flex gap-2 mt-6">
         <button type="submit" className="w-full bg-brand text-white font-semibold py-2 rounded-md hover:bg-brand-dark transition">Calculate</button>
-        {import.meta.env.DEV && (
-          <button
-            type="button"
-            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm font-semibold"
-            onClick={() => {
-              const sample = {
-                age: '35',
-                gender: 'male',
-                tobaccoUse: 'no',
-                shortTermInvestment: '10000',
-                intermediateInvestment: '20000',
-                longTermInvestment: '30000',
-                neverInvestment: '5000'
-              };
-              setFormData(sample);
-              // Clear any existing errors
-              setErrors({});
-              // Submit the form with the sample data
-              onSubmit({
-                age: Number(sample.age),
-                gender: sample.gender,
-                tobaccoUse: sample.tobaccoUse,
-                shortTermInvestment: Number(sample.shortTermInvestment),
-                intermediateInvestment: Number(sample.intermediateInvestment),
-                longTermInvestment: Number(sample.longTermInvestment),
-                neverInvestment: Number(sample.neverInvestment)
-              });
-            }}
-          >
-            Debug
-          </button>
-        )}
       </div>
     </form>
   );

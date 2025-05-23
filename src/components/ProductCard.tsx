@@ -174,11 +174,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
           <button
             onClick={onCompareClick}
             className={`
-              p-2 rounded-full transition-colors duration-200 shadow-sm
+              p-2 rounded-full transition-all duration-200
               ${isSelected
-                ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                ? 'bg-green-100 text-green-600 hover:bg-green-200 hover:shadow-lg'
+                : 'bg-amber-50 text-amber-600 hover:bg-amber-100 hover:shadow-lg'
               }
+              transform hover:-translate-y-0.5
             `}
             title="Compare"
           >
@@ -186,7 +187,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </button>
           <button
             onClick={onDetailsClick}
-            className="p-2 rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 transition-colors duration-200 shadow-sm"
+            className="
+              p-2 rounded-full bg-indigo-50 text-indigo-500 
+              hover:bg-indigo-100 hover:shadow-lg
+              transition-all duration-200 transform hover:-translate-y-0.5
+            "
             title="View Details"
           >
             <FaInfoCircle className="w-5 h-5" />

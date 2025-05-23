@@ -204,10 +204,6 @@ const Results: React.FC<ResultsProps> = ({
   const annuityProducts = products.filter(p => p.type === 'annuity');
   const moneyMarketProducts = products.filter(p => p.type === 'moneyMarket');
 
-  console.log('All products:', products);
-  console.log('Money Market products:', moneyMarketProducts);
-  console.log('Current tab:', tab);
-
   const handleProductSelect = (product: any, investment: number, rate: number) => {
     let id;
     if (product.type === 'cd') {
@@ -338,22 +334,12 @@ const Results: React.FC<ResultsProps> = ({
   };
 
   const renderMoneyMarketCards = (investment: number, termType: string) => {
-    console.log('Rendering Money Market cards for:', { investment, termType });
-    console.log('Filtered products:', moneyMarketProducts.filter(product => product.termType === 'open'));
-
     return moneyMarketProducts
       .filter(product => product.termType === 'open')
       .map((product) => {
         const rate = getRateForInvestment(investment, product);
         const result = calculateMoneyMarketReturn(investment, rate);
         const isSelected = selectedProducts.some(p => p._id === product._id);
-
-        console.log('Processing Money Market product:', {
-          name: product.data?.productName,
-          rate,
-          result,
-          isSelected
-        });
 
         // Attach investment and rate for comparison
         const moneyMarketProduct = {
@@ -568,32 +554,77 @@ const Results: React.FC<ResultsProps> = ({
 
         {/* Tab Content */}
         <div className="mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {getProductsForTab(tab).map(product => {
-              // Render the appropriate card for each product type
-              if (product.type === 'cd') {
-                const termMonths = product.data?.termMonths ?? 12;
-                const rate = product.data?.rate ?? 0.04;
-                return renderCDCard(
-                  tab === 0 ? shortTermInvestment : tab === 1 ? intermediateInvestment : longTermInvestment,
-                  termMonths,
-                  rate,
-                  product
-                );
-              } else if (product.type === 'moneyMarket') {
-                // Only render all money market cards once per tab
-                if (product._id === 'money-market-1') {
-                  const investment = tab === 0 ? shortTermInvestment : tab === 1 ? intermediateInvestment : longTermInvestment;
-                  return renderMoneyMarketCards(investment, 'open');
-                }
-                return null;
-              } else if (product.type === 'annuity') {
-                return renderAnnuityCards(longTermInvestment);
-              } else if (product.type === 'lifeInsurance') {
-                return renderLifeInsuranceCard(neverInvestment);
-              }
-              return null;
-            })}
+          <div className="space-y-8">
+            {/* CDs Section */}
+            {getProductsForTab(tab).filter(product => product.type === 'cd').length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <MdSavings className="w-5 h-5 text-green-500" />
+                  <h3 className="text-lg font-semibold text-gray-900">Certificates of Deposit</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {getProductsForTab(tab)
+                    .filter(product => product.type === 'cd')
+                    .map(product => {
+                      const termMonths = product.data?.termMonths ?? 12;
+                      const rate = product.data?.rate ?? 0.04;
+                      return renderCDCard(
+                        tab === 0 ? shortTermInvestment : tab === 1 ? intermediateInvestment : longTermInvestment,
+                        termMonths,
+                        rate,
+                        product
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Money Market Section */}
+            {getProductsForTab(tab).filter(product => product.type === 'moneyMarket').length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <FaPiggyBank className="w-5 h-5 text-blue-500" />
+                  <h3 className="text-lg font-semibold text-gray-900">Money Market Accounts</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {getProductsForTab(tab)
+                    .filter(product => product.type === 'moneyMarket')
+                    .map(product => {
+                      if (product._id === 'money-market-1') {
+                        const investment = tab === 0 ? shortTermInvestment : tab === 1 ? intermediateInvestment : longTermInvestment;
+                        return renderMoneyMarketCards(investment, 'open');
+                      }
+                      return null;
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Annuities Section */}
+            {tab === 2 && annuityProducts.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <GiReceiveMoney className="w-5 h-5 text-yellow-500" />
+                  <h3 className="text-lg font-semibold text-gray-900">Annuities</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {renderAnnuityCards(longTermInvestment)}
+                </div>
+              </div>
+            )}
+
+            {/* Life Insurance Section */}
+            {tab === 3 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <FaShieldAlt className="w-5 h-5 text-purple-500" />
+                  <h3 className="text-lg font-semibold text-gray-900">Life Insurance</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {renderLifeInsuranceCard(neverInvestment)}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -602,12 +633,16 @@ const Results: React.FC<ResultsProps> = ({
 
       {modalProduct && (
         <ProductModal
-          product={modalProduct}
+          product={{
+            type: modalProduct.type,
+            name: modalProduct.data?.productName || modalProduct.productName || 'Product',
+            termCircle: getTermCircle(modalProduct),
+            projectedValue: modalProduct.projectedValue || 0,
+            investment: modalProduct.investment || shortTermInvestment,
+            rate: modalProduct.rate || 0,
+            data: modalProduct.data
+          }}
           onClose={() => setModalProduct(null)}
-          investment={shortTermInvestment}
-          age={age}
-          gender={gender}
-          tobaccoUse={tobaccoUse}
         />
       )}
 
