@@ -1,83 +1,136 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { FaEdit, FaTrash, FaCheck, FaTimes } from 'react-icons/fa';
 
 interface EditableGridProps {
- value: any[];
- onChange: (newValue: any[]) => void;
- columns?: string[]; // Optional: specify columns, otherwise infer from first row
- label?: string;
- schema?: { name: string; label: string }[]; // Add schema prop
+ data: any[];
+ columns: {
+  key: string;
+  label: string;
+  type?: 'text' | 'number' | 'select';
+  options?: string[];
+ }[];
+ onEdit: (id: string, data: any) => void;
+ onDelete: (id: string) => void;
 }
 
-const EditableGrid: React.FC<EditableGridProps> = ({ value, onChange, columns, label, schema }) => {
- const inferredColumns = columns || (value[0] ? Object.keys(value[0]) : []);
+const EditableGrid: React.FC<EditableGridProps> = ({
+ data,
+ columns,
+ onEdit,
+ onDelete
+}) => {
+ const [editingId, setEditingId] = useState<string | null>(null);
+ const [editData, setEditData] = useState<Record<string, any>>({});
 
- // Map field name to label using schema if available
- const getColLabel = (col: string) => {
-  if (schema) {
-   const found = schema.find(f => f.name === col);
-   if (found && found.label) return found.label;
-  }
-  // Fallback: prettify the column name
-  return col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+ const handleEdit = (id: string) => {
+  const item = data.find(d => d.id === id);
+  setEditData(item);
+  setEditingId(id);
  };
 
- const handleCellChange = (rowIdx: number, col: string, cellValue: string) => {
-  const updated = value.map((row, idx) =>
-   idx === rowIdx ? { ...row, [col]: cellValue } : row
-  );
-  onChange(updated);
+ const handleSave = () => {
+  onEdit(editingId!, editData);
+  setEditingId(null);
+  setEditData({});
  };
 
- const handleAddRow = () => {
-  const emptyRow = inferredColumns.reduce((acc, col) => ({ ...acc, [col]: '' }), {});
-  onChange([...value, emptyRow]);
+ const handleCancel = () => {
+  setEditingId(null);
+  setEditData({});
  };
 
- const handleRemoveRow = (rowIdx: number) => {
-  onChange(value.filter((_, idx) => idx !== rowIdx));
+ const handleChange = (key: string, value: any) => {
+  setEditData((prev: Record<string, any>) => ({ ...prev, [key]: value }));
  };
 
  return (
-  <div className="editable-grid" style={{ overflowX: 'auto' }}>
-   {label && <h4>{label}</h4>}
-   <table style={{ minWidth: 600 }}>
-    <thead>
+  <div className="overflow-x-auto">
+   <table className="min-w-full divide-y divide-gray-200">
+    <thead className="bg-gray-50">
      <tr>
-      {inferredColumns.map(col => (
-       <th key={col} style={{ minWidth: 120 }}>{getColLabel(col)}</th>
+      {columns.map(column => (
+       <th
+        key={column.key}
+        scope="col"
+        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+       >
+        {column.label}
+       </th>
       ))}
-      <th style={{ minWidth: 48 }}></th>
+      <th scope="col" className="relative px-6 py-3">
+       <span className="sr-only">Actions</span>
+      </th>
      </tr>
     </thead>
-    <tbody>
-     {value.map((row, rowIdx) => (
-      <tr key={rowIdx}>
-       {inferredColumns.map(col => (
-        <td key={col} style={{ minWidth: 120 }}>
-         <input
-          type="text"
-          value={row[col] ?? ''}
-          onChange={e => handleCellChange(rowIdx, col, e.target.value)}
-         />
+    <tbody className="bg-white divide-y divide-gray-200">
+     {data.map(item => (
+      <tr key={item.id} className="hover:bg-gray-50">
+       {columns.map(column => (
+        <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+         {editingId === item.id ? (
+          column.type === 'select' ? (
+           <select
+            value={editData[column.key] || ''}
+            onChange={e => handleChange(column.key, e.target.value)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+           >
+            <option value="">Select {column.label}</option>
+            {column.options?.map(option => (
+             <option key={option} value={option}>
+              {option}
+             </option>
+            ))}
+           </select>
+          ) : (
+           <input
+            type={column.type || 'text'}
+            value={editData[column.key] || ''}
+            onChange={e => handleChange(column.key, e.target.value)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+           />
+          )
+         ) : (
+          item[column.key]
+         )}
         </td>
        ))}
-       <td style={{ minWidth: 48 }}>
-        <span
-         style={{ cursor: 'pointer', fontSize: '1.2em', color: '#f44336' }}
-         onClick={() => handleRemoveRow(rowIdx)}
-         title="Remove row"
-         role="button"
-         tabIndex={0}
-         onKeyPress={e => { if (e.key === 'Enter' || e.key === ' ') handleRemoveRow(rowIdx); }}
-        >
-         🗑️
-        </span>
+       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        {editingId === item.id ? (
+         <div className="flex items-center justify-end gap-2">
+          <button
+           onClick={handleSave}
+           className="text-green-600 hover:text-green-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+           <FaCheck className="w-5 h-5" />
+          </button>
+          <button
+           onClick={handleCancel}
+           className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+           <FaTimes className="w-5 h-5" />
+          </button>
+         </div>
+        ) : (
+         <div className="flex items-center justify-end gap-2">
+          <button
+           onClick={() => handleEdit(item.id)}
+           className="text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+           <FaEdit className="w-5 h-5" />
+          </button>
+          <button
+           onClick={() => onDelete(item.id)}
+           className="text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+           <FaTrash className="w-5 h-5" />
+          </button>
+         </div>
+        )}
        </td>
       </tr>
      ))}
     </tbody>
    </table>
-   <button type="button" onClick={handleAddRow} className="add-row-button">+ Add Row</button>
   </div>
  );
 };

@@ -1,128 +1,78 @@
 import React from 'react';
-import { Tabs, Tab, Box } from '@mui/material';
 import { MdSavings } from 'react-icons/md';
-import { FaShieldAlt } from 'react-icons/fa';
+import { FaPiggyBank, FaShieldAlt } from 'react-icons/fa';
+import { GiReceiveMoney } from 'react-icons/gi';
 
 interface InvestmentTabsProps {
- value: number;
- onChange: (value: number) => void;
+      activeTab: number;
+      onTabChange: (index: number) => void;
+      shortTermInvestment: number;
+      intermediateInvestment: number;
+      longTermInvestment: number;
+      neverInvestment: number;
 }
 
-const InvestmentTabs: React.FC<InvestmentTabsProps> = ({ value, onChange }) => {
- return (
-  <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-   <Tabs
-    value={value}
-    onChange={(_, v) => onChange(v)}
-    aria-label="Investment Term Tabs"
-    sx={{
-     '.MuiTabs-indicator': {
-      backgroundColor: 'var(--color-primary)',
-      height: 4,
-      borderRadius: 2,
-     },
-     minHeight: 0,
-    }}
-   >
-    <Tab
-     icon={<MdSavings style={{ fontSize: 22, marginRight: 8, color: '#8cc63f' }} />}
-     iconPosition="start"
-     label="Short Term"
-     sx={{
-      textTransform: 'none',
-      fontWeight: 600,
-      fontSize: '1rem',
-      color: value === 0 ? 'var(--color-primary)' : '#64748b',
-      minHeight: 0,
-      '&.Mui-selected': {
-       color: 'var(--color-primary)',
-      },
-      '&:hover': {
-       background: 'rgba(140,198,63,0.08)',
-       color: 'var(--color-primary)',
-      },
-      '&.Mui-focusVisible': {
-       outline: '2px solid var(--color-primary)',
-       outlineOffset: '2px',
-       background: 'rgba(140,198,63,0.10)',
-      },
-     }}
-    />
-    <Tab
-     icon={<MdSavings style={{ fontSize: 22, marginRight: 8, color: '#4a90e2' }} />}
-     iconPosition="start"
-     label="Intermediate Term"
-     sx={{
-      textTransform: 'none',
-      fontWeight: 600,
-      fontSize: '1rem',
-      color: value === 1 ? 'var(--color-primary)' : '#64748b',
-      minHeight: 0,
-      '&.Mui-selected': {
-       color: 'var(--color-primary)',
-      },
-      '&:hover': {
-       background: 'rgba(140,198,63,0.08)',
-       color: 'var(--color-primary)',
-      },
-      '&.Mui-focusVisible': {
-       outline: '2px solid var(--color-primary)',
-       outlineOffset: '2px',
-       background: 'rgba(140,198,63,0.10)',
-      },
-     }}
-    />
-    <Tab
-     icon={<MdSavings style={{ fontSize: 22, marginRight: 8, color: '#f39c12' }} />}
-     iconPosition="start"
-     label="Long Term"
-     sx={{
-      textTransform: 'none',
-      fontWeight: 600,
-      fontSize: '1rem',
-      color: value === 2 ? 'var(--color-primary)' : '#64748b',
-      minHeight: 0,
-      '&.Mui-selected': {
-       color: 'var(--color-primary)',
-      },
-      '&:hover': {
-       background: 'rgba(140,198,63,0.08)',
-       color: 'var(--color-primary)',
-      },
-      '&.Mui-focusVisible': {
-       outline: '2px solid var(--color-primary)',
-       outlineOffset: '2px',
-       background: 'rgba(140,198,63,0.10)',
-      },
-     }}
-    />
-    <Tab
-     icon={<FaShieldAlt style={{ fontSize: 20, marginRight: 8, color: '#9b59b6' }} />}
-     iconPosition="start"
-     label="Maybe Never / Leave On"
-     sx={{
-      textTransform: 'none',
-      fontWeight: 600,
-      fontSize: '1rem',
-      color: value === 3 ? 'var(--color-primary)' : '#64748b',
-      minHeight: 0,
-      '&.Mui-selected': {
-       color: 'var(--color-primary)',
-      },
-      '&:hover': {
-       background: 'rgba(140,198,63,0.08)',
-       color: 'var(--color-primary)',
-      },
-      '&.Mui-focusVisible': {
-       outline: '2px solid var(--color-primary)',
-       outlineOffset: '2px',
-       background: 'rgba(140,198,63,0.10)',
-      },
-     }}
-    />
-   </Tabs>
-  </Box>
- );
+const InvestmentTabs: React.FC<InvestmentTabsProps> = ({
+      activeTab,
+      onTabChange,
+      shortTermInvestment,
+      intermediateInvestment,
+      longTermInvestment,
+      neverInvestment,
+}) => {
+      const tabs = [
+            {
+                  label: 'Short Term',
+                  icon: <MdSavings className="w-5 h-5" />,
+                  value: shortTermInvestment,
+                  color: 'text-green-500'
+            },
+            {
+                  label: 'Intermediate Term',
+                  icon: <FaPiggyBank className="w-5 h-5" />,
+                  value: intermediateInvestment,
+                  color: 'text-blue-500'
+            },
+            {
+                  label: 'Long Term',
+                  icon: <GiReceiveMoney className="w-5 h-5" />,
+                  value: longTermInvestment,
+                  color: 'text-yellow-500'
+            },
+            {
+                  label: 'Life Insurance',
+                  icon: <FaShieldAlt className="w-5 h-5" />,
+                  value: neverInvestment,
+                  color: 'text-purple-500'
+            }
+      ];
+
+      return (
+            <div className="border-b border-gray-200">
+                  <nav className="flex -mb-px space-x-8" aria-label="Tabs">
+                        {tabs.map((tab, index) => (
+                              <button
+                                    key={tab.label}
+                                    onClick={() => onTabChange(index)}
+                                    className={`
+              group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm
+              ${activeTab === index
+                                                ? 'border-green-500 text-green-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                          }
+            `}
+                              >
+                                    {tab.label}
+                                    {tab.count > 0 && (
+                                          <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
+                                                {tab.count}
+                                          </span>
+                                    )}
+                              </button>
+                        ))}
+                  </nav>
+            </div>
+      );
 };
 
 export default InvestmentTabs; 

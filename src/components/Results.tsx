@@ -7,6 +7,31 @@ import InvestmentTabs from './InvestmentTabs';
 import TotalSummary from './TotalSummary';
 import AdvisorCard from './AdvisorCard';
 import { FaUserTie, FaEnvelope, FaPhone, FaUserCircle } from 'react-icons/fa';
+import { MdSavings } from 'react-icons/md';
+import { FaPiggyBank, FaShieldAlt } from 'react-icons/fa';
+import { GiReceiveMoney } from 'react-icons/gi';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+import type { ChartOptions } from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface ResultsProps {
   shortTermInvestment: number;
@@ -31,19 +56,12 @@ const calculateAnnuityReturn = (investment: number, termYears: number, initialRa
 };
 
 const calculateLifeInsuranceReturn = (investment: number, age: number, gender: string, tobaccoUse: string) => {
-  let baseRate = 0.04;
-  if (age < 30) baseRate += 0.01;
-  else if (age > 60) baseRate -= 0.01;
-  if (gender === 'female') baseRate += 0.005;
-  if (tobaccoUse === 'yes') baseRate -= 0.01;
-  return investment * Math.pow(1 + baseRate, 30);
+  const rate = 0.04; // Default rate
+  return investment * Math.pow(1 + rate, 30);
 };
 
-const calculateMoneyMarketReturn = (investment: number, product: any, years: number) => {
-  const rate = getRateForInvestment(investment, product);
-  const monthlyRate = rate / 12;
-  const months = years * 12;
-  return investment * Math.pow(1 + monthlyRate, months);
+const calculateMoneyMarketReturn = (investment: number, rate: number) => {
+  return investment * Math.pow(1 + rate, 30); // Show 30-year projection
 };
 
 const getRateForInvestment = (investment: number, product: any) => {
@@ -141,9 +159,14 @@ const CompareTab: React.FC<{ count: number; onClick: () => void }> = ({ count, o
   if (count === 0) return null;
 
   return (
-    <div className="compare-tab" onClick={onClick}>
-      <img src="/clippy.png" alt="Clippy" className="compare-icon" style={{ width: 24, height: 24 }} />
-      <span className="counter">{count}</span>
+    <div
+      className="fixed right-0 top-1/2 -translate-y-1/2 bg-green-600 text-white rounded-l-lg px-4 py-3 shadow-lg flex items-center gap-2 cursor-pointer transition-all hover:bg-green-700 z-50 backdrop-blur-sm"
+      onClick={onClick}
+    >
+      <img src="/clippy.png" alt="Clippy" className="w-6 h-6" />
+      <span className="bg-white text-green-600 rounded-full px-2 py-0.5 text-sm font-semibold min-w-[24px] text-center">
+        {count}
+      </span>
     </div>
   );
 };
@@ -181,13 +204,48 @@ const Results: React.FC<ResultsProps> = ({
   const annuityProducts = products.filter(p => p.type === 'annuity');
   const moneyMarketProducts = products.filter(p => p.type === 'moneyMarket');
 
+  console.log('All products:', products);
+  console.log('Money Market products:', moneyMarketProducts);
+  console.log('Current tab:', tab);
+
   const handleProductSelect = (product: any, investment: number, rate: number) => {
-    const id = product._id || product.data?.productName || product.productName;
+    let id;
+    if (product.type === 'cd') {
+      id = `cd-${product.termMonths}-${product.rate}`;
+    } else {
+      id = product._id || product.data?.productName || product.productName;
+    }
     setSelectedProducts(prev => {
-      if (prev.some(p => (p._id || p.data?.productName || p.productName) === id)) {
-        return prev.filter(p => (p._id || p.data?.productName || p.productName) !== id);
+      if (prev.some(p => {
+        if (product.type === 'cd') {
+          return `cd-${p.termMonths}-${p.rate}` === id;
+        } else {
+          return (p._id || p.data?.productName || p.productName) === id;
+        }
+      })) {
+        return prev.filter(p => {
+          if (product.type === 'cd') {
+            return `cd-${p.termMonths}-${p.rate}` !== id;
+          } else {
+            return (p._id || p.data?.productName || p.productName) !== id;
+          }
+        });
       }
-      return [...prev, { ...product, investment, rate }];
+      // Calculate projectedValue for the selected product
+      let projectedValue = product.projectedValue;
+      if (projectedValue === undefined) {
+        if (product.type === 'cd') {
+          projectedValue = calculateCDReturn(investment, product.termMonths, rate);
+        } else if (product.type === 'annuity') {
+          projectedValue = calculateAnnuityReturn(investment, product.data.termYears, rate, product.data.bonusRate);
+        } else if (product.type === 'moneyMarket') {
+          const years = product.termType === 'short' ? 1 : product.termType === 'intermediate' ? 3 : 5;
+          projectedValue = calculateMoneyMarketReturn(investment, rate);
+        } else if (product.type === 'lifeInsurance') {
+          projectedValue = calculateLifeInsuranceReturn(investment, age, gender, tobaccoUse);
+        }
+      }
+      return [...prev, { ...product, investment, rate, projectedValue }];
     });
   };
 
@@ -204,14 +262,12 @@ const Results: React.FC<ResultsProps> = ({
       ...product
     };
 
-    const isSelected = selectedProducts.some(p =>
-      product ? p._id === product._id :
-        p.type === 'cd' && p.termMonths === termMonths && p.rate === rate
-    );
+    const cdId = `cd-${termMonths}-${rate}`;
+    const isSelected = selectedProducts.some(p => p.type === 'cd' && `cd-${p.termMonths}-${p.rate}` === cdId);
 
     return (
       <ProductCard
-        key={cdProduct.data.productName}
+        key={`cd-${termMonths}-${rate}`}
         type="cd"
         productName={cdProduct.data.productName}
         termCircle={getTermCircle(cdProduct)}
@@ -282,27 +338,42 @@ const Results: React.FC<ResultsProps> = ({
   };
 
   const renderMoneyMarketCards = (investment: number, termType: string) => {
+    console.log('Rendering Money Market cards for:', { investment, termType });
+    console.log('Filtered products:', moneyMarketProducts.filter(product => product.termType === 'open'));
+
     return moneyMarketProducts
-      .filter(product => product.termType === termType)
+      .filter(product => product.termType === 'open')
       .map((product) => {
-        const years = termType === 'short' ? 1 : termType === 'intermediate' ? 3 : 5;
-        const result = calculateMoneyMarketReturn(investment, product, years);
         const rate = getRateForInvestment(investment, product);
+        const result = calculateMoneyMarketReturn(investment, rate);
         const isSelected = selectedProducts.some(p => p._id === product._id);
+
+        console.log('Processing Money Market product:', {
+          name: product.data?.productName,
+          rate,
+          result,
+          isSelected
+        });
+
+        // Attach investment and rate for comparison
+        const moneyMarketProduct = {
+          ...product,
+          investment,
+          rate,
+        };
 
         return (
           <ProductCard
             key={product._id}
             type="moneyMarket"
-            productName={product.data?.productName || 'Money Market'}
+            productName={product.data.productName}
             termCircle={getTermCircle(product)}
             projectedValue={result}
             investment={investment}
             rate={rate}
             isSelected={isSelected}
             onDetailsClick={() => setModalProduct(product)}
-            onCompareClick={() => handleProductSelect(product, investment, rate)}
-            termType={termType}
+            onCompareClick={() => handleProductSelect(moneyMarketProduct, investment, rate)}
           />
         );
       });
@@ -361,111 +432,203 @@ const Results: React.FC<ResultsProps> = ({
     });
   }, [selectedProducts, age, gender, tobaccoUse]);  // Remove tab and investment dependencies since we use stored values
 
+  const getProductIcon = (type: string) => {
+    switch (type) {
+      case 'cd': return <MdSavings className="text-green-500 text-xl" />;
+      case 'moneyMarket': return <FaPiggyBank className="text-blue-500 text-xl" />;
+      case 'annuity': return <GiReceiveMoney className="text-yellow-500 text-xl" />;
+      case 'lifeInsurance': return <FaShieldAlt className="text-purple-500 text-xl" />;
+      default: return null;
+    }
+  };
+
+  const years = Array.from({ length: 20 }, (_, i) => i + 1);
+  const chartDataLine = {
+    labels: years.map(year => `Year ${year}`),
+    datasets: [
+      {
+        label: 'Short Term',
+        data: years.map(year => shortTermInvestment * Math.pow(1.05, year)),
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.5)',
+        tension: 0.4
+      },
+      {
+        label: 'Intermediate Term',
+        data: years.map(year => intermediateInvestment * Math.pow(1.06, year)),
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        tension: 0.4
+      },
+      {
+        label: 'Long Term',
+        data: years.map(year => longTermInvestment * Math.pow(1.07, year)),
+        borderColor: 'rgb(245, 158, 11)',
+        backgroundColor: 'rgba(245, 158, 11, 0.5)',
+        tension: 0.4
+      },
+      {
+        label: 'Never Term',
+        data: years.map(year => neverInvestment * Math.pow(1.08, year)),
+        borderColor: 'rgb(139, 92, 246)',
+        backgroundColor: 'rgba(139, 92, 246, 0.5)',
+        tension: 0.4
+      }
+    ]
+  };
+
+  const chartOptions: ChartOptions<'line'> = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: 'Investment Growth Projection'
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: (value) => `$${value.toLocaleString()}`
+        }
+      }
+    }
+  };
+
+  const customerInfo = [
+    { label: 'Age', value: age },
+    { label: 'Gender', value: gender },
+    { label: 'Tobacco Use', value: tobaccoUse }
+  ];
+
+  const investmentSummary = [
+    { label: 'Short Term', value: shortTermInvestment, type: 'cd' },
+    { label: 'Intermediate Term', value: intermediateInvestment, type: 'cd' },
+    { label: 'Long Term', value: longTermInvestment, type: 'cd' },
+    { label: 'Never Term', value: neverInvestment, type: 'lifeInsurance' }
+  ];
+
+  // New tab labels
+  const termTabs = ['Short Term', 'Intermediate Term', 'Long Term', 'Maybe Never'];
+
+  // Helper to filter products for each tab
+  const getProductsForTab = (tabIdx: number) => {
+    switch (tabIdx) {
+      case 0: // Short Term
+        return [
+          // CDs < 24 months
+          ...products.filter(p => p.type === 'cd' && ((p.data?.termMonths ?? 12) < 24)),
+          // Money Markets (open)
+          ...products.filter(p => p.type === 'moneyMarket'),
+        ];
+      case 1: // Intermediate Term
+        return [
+          // CDs 24 <= termMonths < 60
+          ...products.filter(p => p.type === 'cd' && ((p.data?.termMonths ?? 12) >= 24 && (p.data?.termMonths ?? 12) < 60)),
+          // Money Markets (open)
+          ...products.filter(p => p.type === 'moneyMarket'),
+        ];
+      case 2: // Long Term
+        return [
+          // CDs >= 60 months
+          ...products.filter(p => p.type === 'cd' && ((p.data?.termMonths ?? 12) >= 60)),
+          // Money Markets (open)
+          ...products.filter(p => p.type === 'moneyMarket'),
+          // Annuities
+          ...products.filter(p => p.type === 'annuity'),
+        ];
+      case 3: // Maybe Never
+        return [
+          // Life Insurance only
+          ...products.filter(p => p.type === 'lifeInsurance'),
+        ];
+      default:
+        return [];
+    }
+  };
+
   return (
-    <>
-      {modalProduct && (
-        <ProductModal product={modalProduct} onClose={() => setModalProduct(null)} />
-      )}
-      <ComparisonModal
-        open={isCompareModalOpen}
-        onClose={() => setIsCompareModalOpen(false)}
-        selectedProducts={selectedProducts}
-        chartData={chartData}
-        lineColors={lineColors}
-      />
-      <CompareTab
-        count={selectedProducts.length}
-        onClick={() => setIsCompareModalOpen(true)}
-      />
-      <div className="advisor-contact-dropdown">
-        <button className="advisor-contact-btn">
-          <FaUserTie size={24} />
-          Contact Advisor
-        </button>
-        <div className="advisor-dropdown-content">
-          {mockAdvisors.map((advisor, index) => (
-            <div key={index} className="advisor-card">
-              <div className="advisor-avatar">
-                {advisor.avatar}
-              </div>
-              <div className="advisor-info">
-                <div className="advisor-name">{advisor.name}</div>
-                <div className="advisor-contact">
-                  <FaEnvelope style={{ marginRight: 6, color: '#64748b' }} />
-                  <a href={`mailto:${advisor.email}`}>{advisor.email}</a>
-                </div>
-                <div className="advisor-contact">
-                  <FaPhone style={{ marginRight: 6, color: '#64748b' }} />
-                  <a href={`tel:${advisor.phone}`}>{advisor.phone}</a>
-                </div>
-              </div>
-            </div>
+    <div className="w-full px-2 md:px-8">
+      <div className="p-6 w-full">
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          {termTabs.map((label, idx) => (
+            <button
+              key={label}
+              onClick={() => setTab(idx)}
+              className={`px-4 py-2 rounded ${tab === idx ? 'bg-gray-200 font-bold' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+            >
+              {label}
+            </button>
           ))}
         </div>
-      </div>
-      <div className="results-container">
-        <h2>Investment Results</h2>
-        <div className="tabs-advisor-row">
-          <InvestmentTabs value={tab} onChange={setTab} />
+
+        {/* Tab Content */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {getProductsForTab(tab).map(product => {
+              // Render the appropriate card for each product type
+              if (product.type === 'cd') {
+                const termMonths = product.data?.termMonths ?? 12;
+                const rate = product.data?.rate ?? 0.04;
+                return renderCDCard(
+                  tab === 0 ? shortTermInvestment : tab === 1 ? intermediateInvestment : longTermInvestment,
+                  termMonths,
+                  rate,
+                  product
+                );
+              } else if (product.type === 'moneyMarket') {
+                // Only render all money market cards once per tab
+                if (product._id === 'money-market-1') {
+                  const investment = tab === 0 ? shortTermInvestment : tab === 1 ? intermediateInvestment : longTermInvestment;
+                  return renderMoneyMarketCards(investment, 'open');
+                }
+                return null;
+              } else if (product.type === 'annuity') {
+                return renderAnnuityCards(longTermInvestment);
+              } else if (product.type === 'lifeInsurance') {
+                return renderLifeInsuranceCard(neverInvestment);
+              }
+              return null;
+            })}
+          </div>
         </div>
-
-        {tab === 0 && (
-          <div className="investment-section">
-            <h3>Short Term (Less than 1 year)</h3>
-            <div className="product-cards">
-              {renderMoneyMarketCards(shortTermInvestment, 'short')}
-              {renderCDCard(shortTermInvestment, 12, 0.04)}
-            </div>
-          </div>
-        )}
-
-        {tab === 1 && (
-          <div className="investment-section">
-            <h3>Intermediate Term (2 to 5 years)</h3>
-            <div className="product-cards">
-              {renderMoneyMarketCards(intermediateInvestment, 'intermediate')}
-              {renderCDCard(intermediateInvestment, 36, 0.045)}
-            </div>
-          </div>
-        )}
-
-        {tab === 2 && (
-          <div className="investment-section">
-            <div className="section-title-row">
-              <h3>Long Term (5+ years)</h3>
-            </div>
-            <div className="subsection">
-              <h4>Fixed Rate Options</h4>
-              <div className="product-cards">
-                {renderMoneyMarketCards(longTermInvestment, 'long')}
-                {renderCDCard(longTermInvestment, 60, 0.05)}
-              </div>
-            </div>
-            <div className="subsection">
-              <h4>Annuity Options</h4>
-              <div className="product-cards">
-                {renderAnnuityCards(longTermInvestment)}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tab === 3 && (
-          <div className="investment-section">
-            <h3>Maybe Never / Leave On</h3>
-            <div className="product-cards">
-              {renderLifeInsuranceCard(neverInvestment)}
-            </div>
-          </div>
-        )}
-
-        <TotalSummary
-          totalInvestment={totalInvestment}
-          totalReturn={totalReturn}
-          totalGrowth={totalGrowth}
-        />
       </div>
-    </>
+
+      <CompareTab count={selectedProducts.length} onClick={() => setIsCompareModalOpen(true)} />
+
+      {modalProduct && (
+        <ProductModal
+          product={modalProduct}
+          onClose={() => setModalProduct(null)}
+          investment={shortTermInvestment}
+          age={age}
+          gender={gender}
+          tobaccoUse={tobaccoUse}
+        />
+      )}
+
+      {isCompareModalOpen && (
+        <ComparisonModal
+          products={selectedProducts.map(p => ({
+            name: p.data?.productName || p.productName || p.name || 'Product',
+            type: p.type,
+            projectedValue: p.projectedValue,
+            investment: p.investment,
+            rate: p.rate,
+            ...(p.type === 'cd' && { termMonths: p.termMonths }),
+            ...(p.type === 'annuity' && { termYears: p.termYears }),
+          }))}
+          onClose={() => setIsCompareModalOpen(false)}
+          age={age}
+          gender={gender}
+          tobaccoUse={tobaccoUse}
+        />
+      )}
+    </div>
   );
 };
 
